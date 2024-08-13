@@ -42,7 +42,7 @@ services:
       restart_policy:
         condition: any
     volumes:
-      - bedrock_data:/app:rw
+      - bedrock:/app:rw
       - acf_settings:/app/web/app/mu-plugins/awk-acfe:rw
     environment:
       WP_ENV: ${WP_ENV}
@@ -112,11 +112,8 @@ networks:
     attachable: true
 
 volumes:
+  bedrock:
   database_data:
     external: true
   acf_settings:
-    external: true
-  bedrock:
-    external: true
-  bedrock_data:
     external: true
