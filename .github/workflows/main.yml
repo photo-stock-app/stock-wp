@@ -1,0 +1,61 @@
+name: Build and deploy backend
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  deploy:
+    name: Deploy Docker image and stack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Build and push images
+        id: push_images
+        run: |
+          docker build -t alonecat/stock-backend-nginx:latest -f nginx/Dockerfile ./nginx
+          docker push alonecat/stock-backend-nginx:latest
+          docker build -t alonecat/stock-backend:latest -f Dockerfile .
+          docker push alonecat/stock-backend:latest
+
+      - name: Set up docker context over SSH authentication
+        if: steps.push_images.conclusion == 'success'
+        uses: amirmarmul/docker-context-ssh-action@v1
+        with:
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-username: ${{ secrets.SSH_USERNAME }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy Docker stack
+        if: steps.push_images.conclusion == 'success'
+        env:
+          WP_TITLE: ${{ secrets.WP_TITLE }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_PASSWORD: ${{ secrets.WP_PASSWORD }}
+          WP_EMAIL: ${{ secrets.WP_EMAIL }}
+          WP_PORT: ${{ secrets.WP_PORT }}
+          WP_ENV: ${{ secrets.WP_ENV }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PREFIX: ${{ secrets.DB_PREFIX }}
+          AUTH_KEY: ${{ secrets.AUTH_KEY }}
+          SECURE_AUTH_KEY: ${{ secrets.SECURE_AUTH_KEY }}
+          LOGGED_IN_KEY: ${{ secrets.LOGGED_IN_KEY }}
+          NONCE_KEY: ${{ secrets.NONCE_KEY }}
+          AUTH_SALT: ${{ secrets.AUTH_SALT }}
+          SECURE_AUTH_SALT: ${{ secrets.SECURE_AUTH_SALT }}
+          LOGGED_IN_SALT: ${{ secrets.LOGGED_IN_SALT }}
+          NONCE_SALT: ${{ secrets.NONCE_SALT }}
+        run: |
+          echo "Deploying stack..."
+          docker context use remote
+          docker stack deploy --prune -c docker-compose.yml stock-backend-stack

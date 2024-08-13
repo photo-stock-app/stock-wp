@@ -1,0 +1,11 @@
+**.md
+.dockerignore
+.gitignore
+vendor/
+web/wp
+web/app/plugins
+.docker
+
+docker-compose.yml
+
+.idea

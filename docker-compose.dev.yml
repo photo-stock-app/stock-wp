@@ -1,0 +1,115 @@
+name: "stock-wp-dev"
+
+services:
+  database:
+    image: mysql:latest
+    ports:
+      - 3316:3306
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - database:/var/lib/mysql
+    networks:
+      - backend-network-dev
+  nginx-backend:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - bedrock:/app:ro
+    networks:
+      - backend-network-dev
+    ports:
+      - "8080:8080"
+
+  wp-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - bedrock:/app:rw
+    environment:
+      WP_ENV: ${WP_ENV}
+      WP_HOME: ${WP_HOME}
+      WP_SITEURL: ${WP_SITEURL}
+      DB_HOST: database:3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PREFIX: ${DB_PREFIX}
+      AUTH_KEY: ${AUTH_KEY}
+      SECURE_AUTH_KEY: ${SECURE_AUTH_KEY}
+      LOGGED_IN_KEY: ${LOGGED_IN_KEY}
+      NONCE_KEY: ${NONCE_KEY}
+      AUTH_SALT: ${AUTH_SALT}
+      SECURE_AUTH_SALT: ${SECURE_AUTH_SALT}
+      LOGGED_IN_SALT: ${LOGGED_IN_SALT}
+      NONCE_SALT: ${NONCE_SALT}
+    ports:
+      - "9000:9000"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend-network-dev
+  composer:
+    image: composer
+    volumes:
+      - bedrock:/app
+    command: composer install
+    depends_on:
+       wp-app:
+         condition: service_started
+  wp-cli:
+    image: wordpress:cli
+    user: "0"
+    environment:
+      WP_ENV: ${WP_ENV}
+      WP_HOME: ${WP_HOME}
+      WP_SITEURL: ${WP_SITEURL}
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PREFIX: ${DB_PREFIX}
+    command: bash -c "wp core install --url=$WP_HOME \
+      --title=\"$WP_TITLE\" \
+      --admin_user=\"$WP_USER\" \
+      --admin_password=\"$WP_PASSWORD\" \
+      --admin_email=\"$WP_EMAIL\" --allow-root
+      && wp language core install ru_RU --allow-root
+      && wp language core activate ru_RU --allow-root
+      && wp plugin install https://awkirin.ru/wp/plugins/acf-extended-pro.zip --allow-root
+      && wp plugin install https://awkirin.ru/wp/plugins/advanced-custom-fields-pro.zip --allow-root
+      && wp plugin activate --all --allow-root
+      "
+    depends_on:
+      composer:
+        condition: service_completed_successfully
+      database:
+        condition: service_healthy
+        restart: true
+    volumes:
+      - bedrock:/var/www/html:rw
+    networks:
+      backend-network-dev:
+
+
+networks:
+  backend-network-dev:
+    driver: bridge
+
+volumes:
+  database:
+  bedrock:

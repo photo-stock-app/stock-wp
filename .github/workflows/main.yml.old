@@ -1,0 +1,70 @@
+name: 'Deploy Photo-Stock-WP'
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        env:
+          WP_TITLE: ${{ secrets.WP_TITLE }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_PASSWORD: ${{ secrets.WP_PASSWORD }}
+          WP_EMAIL: ${{ secrets.WP_EMAIL }}
+          WP_PORT: ${{ secrets.WP_PORT }}
+          WP_ENV: ${{ secrets.WP_ENV }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PREFIX: ${{ secrets.DB_PREFIX }}
+          AUTH_KEY: ${{ secrets.AUTH_KEY }}
+          SECURE_AUTH_KEY: ${{ secrets.SECURE_AUTH_KEY }}
+          LOGGED_IN_KEY: ${{ secrets.LOGGED_IN_KEY }}
+          NONCE_KEY: ${{ secrets.NONCE_KEY }}
+          AUTH_SALT: ${{ secrets.AUTH_SALT }}
+          SECURE_AUTH_SALT: ${{ secrets.SECURE_AUTH_SALT }}
+          LOGGED_IN_SALT: ${{ secrets.LOGGED_IN_SALT }}
+          NONCE_SALT: ${{ secrets.NONCE_SALT }}
+        run: |
+          touch .env
+          echo "WP_TITLE=\"$WP_TITLE\"" >> .env
+          echo "WP_USER=\"$WP_USER\"" >> .env
+          echo "WP_PASSWORD=\"$WP_PASSWORD\"" >> .env
+          echo "WP_EMAIL=\"$WP_EMAIL\"" >> .env
+          echo "WP_PORT=\"$WP_PORT\"" >> .env
+          echo "WP_ENV=\"$WP_ENV\"" >> .env
+          echo "WP_HOME=http://62.109.4.63:8080" >> .env
+          echo "WP_SITEURL=http://62.109.4.63:8080/wp" >> .env
+          echo "DB_HOST=\"$DB_HOST\"" >> .env
+          echo "DB_NAME=\"$DB_NAME\"" >> .env
+          echo "DB_USER=\"$DB_USER\"" >> .env
+          echo "DB_PASSWORD=\"$DB_PASSWORD\"" >> .env
+          echo "DB_PREFIX=\"$DB_PREFIX\"" >> .env
+          echo "AUTH_KEY=\"$AUTH_KEY\"" >> .env
+          echo "SECURE_AUTH_KEY=\"$SECURE_AUTH_KEY\"" >> .env
+          echo "LOGGED_IN_KEY=\"$LOGGED_IN_KEY\"" >> .env
+          echo "NONCE_KEY=\"$NONCE_KEY\"" >> .env
+          echo "AUTH_SALT=\"$AUTH_SALT\"" >> .env
+          echo "SECURE_AUTH_SALT=\"$SECURE_AUTH_SALT\"" >> .env
+          echo "LOGGED_IN_SALT=\"$LOGGED_IN_SALT\"" >> .env
+          echo "NONCE_SALT=\"$NONCE_SALT\"" >> .env
+
+      - name: Build and run Docker containers
+        run: |
+          docker-compose build
+          docker-compose down --rmi local --remove-orphans
+          docker-compose up -d
+          docker-compose logs wp-cli
+
+      - name: logs for wp-cli
+        run: |
+          docker-compose logs -f wp-cli
+          
