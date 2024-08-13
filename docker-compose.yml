@@ -63,11 +63,15 @@ services:
       NONCE_SALT: ${NONCE_SALT}
     ports:
       - "9000:9000"
-    depends_on:
-      database:
-        condition: service_healthy
     networks:
       - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000"]
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      timeout: 10s
+
   composer:
     image: composer
     deploy:
@@ -75,10 +79,11 @@ services:
     volumes:
       - bedrock:/app
     entrypoint: ["composer", "install"]
-    depends_on:
-      - wp-app
     networks:
       - backend-network
+    depends_on:
+    # Use a script to wait for wp-app to be ready
+    # This is a placeholder and needs to be implemented
 
   wp-cli:
     image: wordpress:cli
@@ -95,13 +100,14 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_PREFIX: ${DB_PREFIX}
     entrypoint: ["bash", "-c", "wp core install --url=$WP_HOME --title=\"$WP_TITLE\" --admin_user=\"$WP_USER\" --admin_password=\"$WP_PASSWORD\" --admin_email=\"$WP_EMAIL\" --allow-root && wp language core install ru_RU --allow-root && wp language core activate ru_RU --allow-root && wp plugin install https://awkirin.ru/wp/plugins/acf-extended-pro.zip --allow-root && wp plugin install https://awkirin.ru/wp/plugins/advanced-custom-fields-pro.zip --allow-root && wp plugin activate --all --allow-root"]
-    depends_on:
-      - composer
-      - database
-    volumes:
-      - bedrock:/var/www/html:rw
     networks:
       - backend-network
+    healthcheck:
+      test: ["CMD", "wp", "core", "is-installed"]
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      timeout: 10s
 
 networks:
   backend-network:
@@ -112,4 +118,8 @@ volumes:
   database_data:
     external: true
   acf_settings:
+    external: true
+  bedrock:
+    external: true
+  bedrock_data:
     external: true
