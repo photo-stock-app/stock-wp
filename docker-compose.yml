@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   nginx:
-    image: alonecat/photo-stock-wp-nginx:latest
+    image: alonecat/stock-backend-nginx:latest
     deploy:
       replicas: 1
     ports:
@@ -36,7 +36,7 @@ services:
       - backend-network
 
   wp-app:
-    image: alonecat/photo-stock-wp-php:latest
+    image: alonecat/stock-backend:latest
     deploy:
       replicas: 1
       restart_policy:
