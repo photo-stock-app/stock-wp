@@ -81,9 +81,6 @@ services:
     entrypoint: ["composer", "install"]
     networks:
       - backend-network
-    depends_on:
-    # Use a script to wait for wp-app to be ready
-    # This is a placeholder and needs to be implemented
 
   wp-cli:
     image: wordpress:cli
